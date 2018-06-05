@@ -39,7 +39,8 @@
             android:background="@android:color/black"
             android:visibility="gone" />
 
-        <com.wonderkiln.camerakit.demo.CameraControls xmlns:app="http://schemas.android.com/apk/res-auto"
+        <com.wonderkiln.camerakit.demo.CameraControls
+            xmlns:app="http://schemas.android.com/apk/res-auto"
             android:layout_width="match_parent"
             android:layout_height="130dp"
             android:layout_gravity="bottom"

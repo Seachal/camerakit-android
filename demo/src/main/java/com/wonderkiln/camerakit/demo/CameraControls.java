@@ -8,6 +8,7 @@ import android.content.res.TypedArray;
 import android.support.annotation.DrawableRes;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -22,7 +23,10 @@ import com.wonderkiln.camerakit.CameraKitVideo;
 import com.wonderkiln.camerakit.CameraView;
 import com.wonderkiln.camerakit.OnCameraKitEvent;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -30,6 +34,7 @@ import butterknife.OnTouch;
 
 public class CameraControls extends LinearLayout {
 
+    public static final String TAG = CameraControls.class.getSimpleName()+":";
     private int cameraViewId = -1;
     private CameraView cameraView;
 
@@ -107,6 +112,9 @@ public class CameraControls extends LinearLayout {
     //@OnCameraKitEvent(CameraKitImage.class)
     public void imageCaptured(CameraKitImage image) {
         byte[] jpeg = image.getJpeg();
+        File file = new File(getContext().getExternalFilesDir("photos"), "photo.jpg");
+        createFileWithByte(jpeg, file);
+        Log.i(TAG + "2:", System.currentTimeMillis() + "");
 
         long callbackTime = System.currentTimeMillis();
         ResultHolder.dispose();
@@ -114,6 +122,7 @@ public class CameraControls extends LinearLayout {
         ResultHolder.setNativeCaptureSize(cameraView.getCaptureSize());
         ResultHolder.setTimeToCallback(callbackTime - captureStartTime);
         Intent intent = new Intent(getContext(), PreviewActivity.class);
+        Log.i(TAG ,  "call end:"+System.currentTimeMillis() );
         getContext().startActivity(intent);
     }
 
@@ -129,42 +138,66 @@ public class CameraControls extends LinearLayout {
         }
     }
 
+    /**
+     * 这个方法，好像是长按是拍视频， 点击就是拍照，
+     *
+     * @param view
+     * @param motionEvent
+     * @return
+     */
+
     @OnTouch(R.id.captureButton)
     boolean onTouchCapture(View view, MotionEvent motionEvent) {
         handleViewTouchFeedback(view, motionEvent);
         switch (motionEvent.getAction()) {
-            case MotionEvent.ACTION_DOWN: {
-                captureDownTime = System.currentTimeMillis();
-                pendingVideoCapture = true;
-                postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (pendingVideoCapture) {
-                            capturingVideo = true;
-                            cameraView.captureVideo();
-                        }
-                    }
-                }, 250);
-                break;
-            }
-
+////            按下
+//            case MotionEvent.ACTION_DOWN: {
+//                captureDownTime = System.currentTimeMillis();
+//                pendingVideoCapture = true;
+//                postDelayed(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        if (pendingVideoCapture) {
+//                            capturingVideo = true;
+//                            cameraView.captureVideo();
+//                        }
+//                    }
+//                }, 250);
+//                break;
+//            }
+////            抬起时
+//            case MotionEvent.ACTION_UP: {
+//                pendingVideoCapture = false;
+//
+//                if (capturingVideo) {
+//                    capturingVideo = false;
+//                    cameraView.stopVideo();
+//                } else {
+//                    captureStartTime = System.currentTimeMillis();
+//                    cameraView.captureImage(new CameraKitEventCallback<CameraKitImage>() {
+//                        @Override
+//                        public void callback(CameraKitImage event) {
+//                            imageCaptured(event);
+//                        }
+//                    });
+//                }
+//                break;
+//            }
             case MotionEvent.ACTION_UP: {
-                pendingVideoCapture = false;
-
-                if (capturingVideo) {
-                    capturingVideo = false;
-                    cameraView.stopVideo();
-                } else {
-                    captureStartTime = System.currentTimeMillis();
-                    cameraView.captureImage(new CameraKitEventCallback<CameraKitImage>() {
-                        @Override
-                        public void callback(CameraKitImage event) {
-                            imageCaptured(event);
-                        }
-                    });
-                }
+                Log.i(TAG ,  "capture begin:"+System.currentTimeMillis() );
+                captureStartTime = System.currentTimeMillis();
+                cameraView.captureImage(new CameraKitEventCallback<CameraKitImage>() {
+                    @Override
+                    public void callback(CameraKitImage event) {
+                        Log.i(TAG ,  "call begin:"+System.currentTimeMillis() );
+                        imageCaptured(event);
+                    }
+                });
+                Log.i(TAG ,  "capture end:"+System.currentTimeMillis() );
                 break;
             }
+            default:
+                break;
         }
         return true;
     }
@@ -284,5 +317,61 @@ public class CameraControls extends LinearLayout {
             }
         }, 120);
     }
+
+
+    /**
+     * 根据byte数组生成文件
+     *
+     * @param bytes 生成文件用到的byte数组
+     */
+    private void createFileWithByte(byte[] bytes, File file) {
+        // TODO Auto-generated method stub
+        /**
+         * 创建File对象，其中包含文件所在的目录以及文件的命名
+         */
+//        File file = new File(Environment.getExternalStorageDirectory(),
+//                fileName);
+
+        // 创建FileOutputStream对象
+        FileOutputStream outputStream = null;
+        // 创建BufferedOutputStream对象
+        BufferedOutputStream bufferedOutputStream = null;
+        try {
+            // 如果文件存在则删除
+            if (file.exists()) {
+                file.delete();
+            }
+            // 在文件系统中根据路径创建一个新的空文件
+            file.createNewFile();
+            // 获取FileOutputStream对象
+            outputStream = new FileOutputStream(file);
+            // 获取BufferedOutputStream对象
+            bufferedOutputStream = new BufferedOutputStream(outputStream);
+            // 往文件所在的缓冲输出流中写byte数据
+            bufferedOutputStream.write(bytes);
+            // 刷出缓冲输出流，该步很关键，要是不执行flush()方法，那么文件的内容是空的。
+            bufferedOutputStream.flush();
+        } catch (Exception e) {
+            // 打印异常信息
+            e.printStackTrace();
+        } finally {
+            // 关闭创建的流对象
+            if (outputStream != null) {
+                try {
+                    outputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (bufferedOutputStream != null) {
+                try {
+                    bufferedOutputStream.close();
+                } catch (Exception e2) {
+                    e2.printStackTrace();
+                }
+            }
+        }
+    }
+
 
 }
